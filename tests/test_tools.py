@@ -60,3 +60,8 @@ def test_report_written_since(tmp_path):
     (tmp_path / "reports" / "drift_1.md").write_text("x")
     assert report_written_since(str(tmp_path), 0)
     assert not report_written_since(str(tmp_path), time.time() + 60)
+
+
+def test_code_surface_reads_console_scripts(tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project.scripts]\nmy-cli = "pkg.app:main"\n')
+    assert tools.code_surface(str(tmp_path))["console_scripts"] == ["my-cli -> pkg.app:main"]

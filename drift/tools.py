@@ -3,6 +3,7 @@ import re
 import subprocess
 import sys
 import time
+import tomllib
 from pathlib import Path
 
 from openminion import tool
@@ -100,9 +101,17 @@ def command_usage(text: str) -> list[str]:
 
 
 def code_surface(repo: str) -> dict[str, list[str]]:
-    """What the code really exposes: env vars, CLI subcommands, CLI flags (Python sources)."""
+    """What the code really exposes: installed console scripts, env vars, CLI subcommands, flags."""
     root = Path(repo).resolve()
-    found = {"env_vars": set(), "commands": set(), "command_usage": set(), "flags": set()}
+    found = {"console_scripts": set(), "env_vars": set(), "commands": set(),
+             "command_usage": set(), "flags": set()}
+    pyproject = root / "pyproject.toml"
+    if pyproject.is_file():  # `pip install` puts these on PATH, so docs may call them directly
+        try:
+            scripts = tomllib.loads(pyproject.read_text(encoding="utf-8")).get("project", {}).get("scripts", {})
+            found["console_scripts"].update(f"{name} -> {target}" for name, target in scripts.items())
+        except tomllib.TOMLDecodeError:
+            pass
     for p in root.rglob("*.py"):
         if set(p.relative_to(root).parts) & SKIP_DIRS:
             continue
