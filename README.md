@@ -26,6 +26,9 @@ Real output on the demo repo (from a saved report):
   ([#852](https://github.com/openminion/openminion/issues/852),
   [#853](https://github.com/openminion/openminion/issues/853),
   [#870](https://github.com/openminion/openminion/issues/870)).
+- Found a real doc bug in OpenMinion's own examples: the `research-brief` quickstart runs without
+  the required `OPENMINION_CONFIG` / `--config`, so it exits with an error. Fix PR:
+  [openminion-examples#2](https://github.com/openminion/openminion-examples/pull/2).
 - Works in CI: `python main.py <repo> --ci` exits 1 on any HIGH finding.
 
 ## What it does
