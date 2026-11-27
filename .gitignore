@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+.env
+state/
+demo_repo/reports/
+.pytest_cache/
+.openminion/
+*.pyc
