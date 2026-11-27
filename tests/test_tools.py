@@ -38,6 +38,7 @@ def test_code_surface_lists_real_names():
     s = tools.code_surface(REPO)
     assert s["env_vars"] == ["TODO_PATH"]
     assert s["commands"] == ["add", "done", "list"]
+    assert s["command_usage"] == ["add <title>", "done <id>", "list [--all]"]
     assert "--all" in s["flags"] and "--done" not in s["flags"]
 
 

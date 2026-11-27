@@ -4,6 +4,30 @@ An agent built on the **OpenMinion 0.1 Python SDK** that finds places where a re
 disagree with its real code: a command that no longer exists, a renamed flag, a wrong env var.
 Built for Cortensor Hackathon #5.
 
+**At a glance**
+
+```bash
+pip install -r requirements.txt && export GEMINI_API_KEY=...
+openminion setup --provider gemini --model gemini-3.1-flash-lite --agent default --no-focus
+python main.py demo_repo        # answer y to the approval prompt
+```
+
+Real output on the demo repo (from a saved report):
+
+| Documented | Actual | Severity |
+|---|---|---|
+| `python todo.py remove 3` | Command `remove` does not exist | HIGH |
+| `python todo.py export --format csv` | Command `export` does not exist | HIGH |
+| `python todo.py list --done` | Flag `--done` does not exist, code has `--all` | HIGH |
+| `TODO_FILE` (env var) | Code reads `TODO_PATH` | MEDIUM |
+
+- Found all 4 planted mismatches in 5 of 5 eval runs ([results](#result-on-the-demo-repo)).
+- 10 OpenMinion rough edges written up in [FINDINGS.md](FINDINGS.md); 3 filed upstream
+  ([#852](https://github.com/openminion/openminion/issues/852),
+  [#853](https://github.com/openminion/openminion/issues/853),
+  [#870](https://github.com/openminion/openminion/issues/870)).
+- Works in CI: `python main.py <repo> --ci` exits 1 on any HIGH finding.
+
 ## What it does
 
 1. Lists the repo's markdown docs and reads them (with line numbers).
@@ -49,21 +73,25 @@ python main.py path/to/repo --ci   # no prompts, JSON out, exit 1 if any HIGH fi
 python eval.py 3                   # 3 runs on demo_repo: detected / correct fix / false positives
 ```
 
+To run it on every pull request, copy [examples/docs-drift.yml](examples/docs-drift.yml) to
+`.github/workflows/` and add a `GEMINI_API_KEY` secret.
+
 ## Result on the demo repo
 
 `python eval.py 5` with `gemini-3.1-flash-lite`:
 
 | run | detected | correct fix | extra findings |
 |---|---|---|---|
-| 1 | 4/4 | 3/4 | 1 |
-| 2 | 4/4 | 3/4 | 1 |
-| 3 | 4/4 | 2/4 | 0 |
+| 1 | 4/4 | 3/4 | 0 |
+| 2 | 4/4 | 3/4 | 0 |
+| 3 | 4/4 | 3/4 | 1 |
 | 4 | 4/4 | 3/4 | 0 |
-| 5 | 4/4 | 3/4 | 0 |
+| 5 | 4/4 | 2/4 | 0 |
 
-All 4 planted mismatches were found in every run. The miss is `remove 3`: the agent says "remove
-from docs" instead of pointing to `done <id>`. The extra finding is a real one: `done` exists in the
-code but is not documented.
+All 4 planted mismatches were found in every run. The usual miss is `remove 3`: the agent says
+"remove from docs" while the answer key expects `done <id>`. That key is debatable (`done` marks a
+task finished, it does not delete it), so we left the prompt alone rather than tune it to the key.
+The extra finding is a real one: `done` exists in the code but is not documented.
 
 How it runs: turn 1 does the work with tools and saves the report (needs approval). Turn 2 turns
 that report into the `DriftReport` JSON. If no report was written, the run fails with `NoWorkDone`

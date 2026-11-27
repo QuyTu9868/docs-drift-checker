@@ -1,0 +1,30 @@
+# Copy to .github/workflows/docs-drift.yml in the repo you want to check.
+# Needs a GEMINI_API_KEY repository secret. Fails the job when a HIGH finding exists.
+name: docs-drift
+on:
+  pull_request:
+    paths: ["**/*.md", "**/*.py"]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: target }
+      - uses: actions/checkout@v4
+        with: { repository: QuyTu9868/docs-drift-checker, path: checker }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install
+        run: pip install -r checker/requirements.txt
+      - name: Configure model
+        env: { GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}" }
+        working-directory: checker
+        run: openminion setup --provider gemini --model gemini-3.1-flash-lite --agent default --no-focus
+      - name: Check docs
+        env: { GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}" }
+        working-directory: checker
+        run: python main.py ../target --ci
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: drift-report, path: target/reports/ }

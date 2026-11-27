@@ -12,7 +12,8 @@ INSTRUCTIONS = """You are Docs Drift Checker. Report where markdown docs disagre
 2. Call list_code_surface once.
 3. Verify each concrete claim (command, flag, path, env var) with search_code or run_help.
 4. Report only claims a tool result disproves. suggested_fix names the real name from
-   list_code_surface (a removed command may map to a real one taking the same argument),
+   list_code_surface. For a missing command, check command_usage: a real command taking
+   the same kind of argument (e.g. an id) is likely its new name,
    else "remove from docs". Severity: HIGH breaks, MEDIUM misleads, LOW cosmetic.
 5. Call write_report once with a short markdown report.
 """

@@ -81,16 +81,35 @@ CMD_RX = re.compile(r"""add_parser\(\s*["']([\w-]+)""")
 FLAG_RX = re.compile(r"""add_argument\(\s*["'](-{1,2}[\w-]+)""")
 
 
+CHAIN_RX = re.compile(r"""add_parser\(\s*["']([\w-]+)["'][^)]*\)\.add_argument\(\s*["']([\w-]+)""")
+VAR_RX = re.compile(r"""(\w+)\s*=\s*\w+\.add_parser\(\s*["']([\w-]+)""")
+
+
+def command_usage(text: str) -> list[str]:
+    """argparse subcommands with their arguments, e.g. 'done <id>', 'list [--all]'."""
+    args: dict[str, list[str]] = {}
+    for cmd, arg in CHAIN_RX.findall(text):
+        args.setdefault(cmd, []).append(arg)
+    for var, cmd in VAR_RX.findall(text):
+        rx = re.compile(rf"""\b{re.escape(var)}\.add_argument\(\s*["']([\w-]+)""")
+        args.setdefault(cmd, []).extend(rx.findall(text))
+    for cmd in CMD_RX.findall(text):
+        args.setdefault(cmd, [])
+    fmt = lambda a: f"[{a}]" if a.startswith("-") else f"<{a}>"
+    return sorted(" ".join([c] + [fmt(a) for a in a_]) for c, a_ in args.items())
+
+
 def code_surface(repo: str) -> dict[str, list[str]]:
     """What the code really exposes: env vars, CLI subcommands, CLI flags (Python sources)."""
     root = Path(repo).resolve()
-    found = {"env_vars": set(), "commands": set(), "flags": set()}
+    found = {"env_vars": set(), "commands": set(), "command_usage": set(), "flags": set()}
     for p in root.rglob("*.py"):
         if set(p.relative_to(root).parts) & SKIP_DIRS:
             continue
         text = p.read_text(encoding="utf-8", errors="replace")
         found["env_vars"].update(ENV_RX.findall(text))
         found["commands"].update(CMD_RX.findall(text))
+        found["command_usage"].update(command_usage(text))
         found["flags"].update(FLAG_RX.findall(text))
     return {k: sorted(v) for k, v in found.items()}
 
@@ -123,7 +142,7 @@ def run_help(repo: str, command: str) -> str:
 
 @tool(min_scope="READ_ONLY", idempotent=True)
 def list_code_surface(repo: str) -> str:
-    """List the env vars, CLI subcommands and flags the code really defines. Use it to name the correct replacement in suggested_fix."""
+    """List the env vars, CLI subcommands (with their arguments) and flags the code really defines. Use it to name the correct replacement in suggested_fix."""
     return "\n".join(f"{k}: {', '.join(v) or '-'}" for k, v in code_surface(repo).items())
 
 
